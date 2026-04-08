@@ -86,6 +86,9 @@ class HttpEnvClient:
         r.raise_for_status()
         return r.json()
 
+    def close(self):
+        pass  # HTTP client — nothing to clean up
+
 
 class InProcessEnvClient:
     def __init__(self):
@@ -103,6 +106,9 @@ class InProcessEnvClient:
 
     def state(self):
         return self._env.state.model_dump()
+
+    def close(self):
+        self._env.close()
 
 
 def get_action(
@@ -190,6 +196,10 @@ def run_inference(task_id: str, seed: int = 0) -> float:
     except Exception as exc:
         log_step(step=steps_taken + 1, action="error()", reward=0.0, done=True, error=str(exc).replace("\n", " "))
     finally:
+        try:
+            env.close()
+        except Exception:
+            pass
         score = max(0.001, min(0.999, score))  # final safety clamp
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
     return score
@@ -221,3 +231,4 @@ if __name__ == "__main__":
             mean = statistics.mean(scores)
             std = statistics.stdev(scores) if len(scores) > 1 else 0.0
             print(f"  {task:12s}  mean={mean:.3f}  std={std:.3f}  min={min(scores):.3f}  max={max(scores):.3f}  n={len(scores)}", flush=True)
+
